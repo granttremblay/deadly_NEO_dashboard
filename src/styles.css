@@ -136,6 +136,7 @@ canvas {
 
 .brand-logo {
   display: block;
+  margin-top: 8px;
   width: min(690px, 48vw);
   max-height: 205px;
   object-fit: contain;
