@@ -1,0 +1,11 @@
+{
+  "name": "deadly-neo-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Animated Earth-centered dashboard of kilometer-class near-Earth objects from NASA/JPL SBDB data.",
+  "type": "module",
+  "scripts": {
+    "fetch:data": "node scripts/fetch-neo-data.mjs",
+    "serve": "python3 -m http.server 5173"
+  }
+}
