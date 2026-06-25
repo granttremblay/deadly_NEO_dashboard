@@ -1,170 +1,174 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#050711">
-    <title>Deadly NEO Dashboard</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23050706'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%234cc9f0'/%3E%3Cpath d='M8 35C20 12 46 10 56 28C44 23 28 28 8 35Z' fill='none' stroke='%2306d6a0' stroke-width='4'/%3E%3Ccircle cx='49' cy='25' r='4' fill='%23ffd166'/%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="src/styles.css">
-  </head>
-  <body>
-    <main class="app-shell">
-      <canvas id="orbitCanvas" aria-label="Animated Earth-centered near-Earth object trail plot"></canvas>
 
-      <section class="topbar" aria-label="Dashboard title and key metrics">
-        <div class="brand-block">
-          <h1 class="hero-title">&ge;0.5 km Potentially Hazardous Near-Earth Objects</h1>
-          <p class="dashboard-title">
-            At this time, all of these objects have a vanishingly small chance of impact
-          </p>
-          <img
-            class="brand-logo"
-            src="assets/planetary-defense-network-logo.svg"
-            alt="Planetary Defense Nexus"
-          >
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050711">
+  <title>Deadly NEO Dashboard</title>
+  <link rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23050706'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%234cc9f0'/%3E%3Cpath d='M8 35C20 12 46 10 56 28C44 23 28 28 8 35Z' fill='none' stroke='%2306d6a0' stroke-width='4'/%3E%3Ccircle cx='49' cy='25' r='4' fill='%23ffd166'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=Roboto:wght@300;400;500;700;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+
+<body>
+  <main class="app-shell">
+    <canvas id="orbitCanvas" aria-label="Animated Earth-centered near-Earth object trail plot"></canvas>
+
+    <section class="topbar" aria-label="Dashboard title and key metrics">
+      <div class="brand-block">
+        <h1 class="hero-title">&ge;0.5 km Potentially Hazardous NEOs</h1>
+        <p class="dashboard-title">
+          No known PHOs have a significant chance of impacting Earth in the next 100 years. This dashboard shows the
+          orbits of all known Potentially Hazardous Near-Earth objects (NEOs) in the Solar System, based on the latest
+          NASA/JPL orbit snapshot.
+        </p>
+        <img class="brand-logo" src="assets/planetary-defense-network-logo.svg" alt="Planetary Defense Nexus">
+      </div>
+      <div class="metric-strip">
+        <article>
+          <span id="totalCount">--</span>
+          <small>shown</small>
+        </article>
+        <article>
+          <span id="phaCount">--</span>
+          <small>PHAs</small>
+        </article>
+        <article>
+          <span id="dateReadout">--</span>
+          <small>simulation date</small>
+        </article>
+      </div>
+    </section>
+
+    <aside class="control-panel" aria-label="Orbit controls">
+      <div class="panel-section play-row">
+        <button id="playToggle" class="primary-button" type="button">Pause</button>
+        <button id="todayButton" type="button">Today</button>
+      </div>
+
+      <div class="panel-section">
+        <label for="dateInput">Date</label>
+        <input id="dateInput" type="date">
+      </div>
+
+      <div class="panel-section">
+        <div class="label-row">
+          <label for="speedRange">Animation speed</label>
+          <output id="speedOutput" for="speedRange">30 d/s</output>
         </div>
-        <div class="metric-strip">
-          <article>
-            <span id="totalCount">--</span>
-            <small>shown</small>
-          </article>
-          <article>
-            <span id="phaCount">--</span>
-            <small>PHAs</small>
-          </article>
-          <article>
-            <span id="dateReadout">--</span>
-            <small>simulation date</small>
-          </article>
+        <input id="speedRange" type="range" min="0" max="240" step="1" value="30">
+      </div>
+
+      <div class="panel-section">
+        <div class="label-row">
+          <label for="diameterRange">Minimum diameter</label>
+          <output id="diameterOutput" for="diameterRange">0.5 km</output>
         </div>
-      </section>
+        <input id="diameterRange" type="range" min="0.5" max="12" step="0.1" value="0.5">
+      </div>
 
-      <aside class="control-panel" aria-label="Orbit controls">
-        <div class="panel-section play-row">
-          <button id="playToggle" class="primary-button" type="button">Pause</button>
-          <button id="todayButton" type="button">Today</button>
-        </div>
-
-        <div class="panel-section">
-          <label for="dateInput">Date</label>
-          <input id="dateInput" type="date">
-        </div>
-
-        <div class="panel-section">
-          <div class="label-row">
-            <label for="speedRange">Animation speed</label>
-            <output id="speedOutput" for="speedRange">30 d/s</output>
-          </div>
-          <input id="speedRange" type="range" min="0" max="240" step="1" value="30">
-        </div>
-
-        <div class="panel-section">
-          <div class="label-row">
-            <label for="diameterRange">Minimum diameter</label>
-            <output id="diameterOutput" for="diameterRange">0.5 km</output>
-          </div>
-          <input id="diameterRange" type="range" min="0.5" max="12" step="0.1" value="0.5">
-        </div>
-
-        <div class="panel-grid">
-          <label>
-            Orbit class
-            <select id="classSelect">
-              <option value="all">All classes</option>
-              <option value="IEO">Atira</option>
-              <option value="ATE">Aten</option>
-              <option value="APO">Apollo</option>
-              <option value="AMO">Amor</option>
-              <option value="COM">Comets</option>
-            </select>
-          </label>
-
-          <label>
-            Object type
-            <select id="kindSelect">
-              <option value="all">All NEOs</option>
-              <option value="asteroid">Asteroids</option>
-              <option value="comet">Comets</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="panel-section inline-options">
-          <label>
-            <input id="displayAll" type="checkbox">
-            Display all &gt;0.5 km NEOs
-          </label>
-          <label>
-            <input id="labelsToggle" type="checkbox">
-            Labels
-          </label>
-        </div>
-
-        <div class="panel-section">
-          <label for="searchInput">Find object</label>
-          <input id="searchInput" type="search" placeholder="Apophis, Bennu, 433...">
-        </div>
-
-        <div class="panel-section">
-          <label for="sortSelect">Sort list</label>
-          <select id="sortSelect">
-            <option value="diameter">Largest first</option>
-            <option value="moid">Smallest MOID</option>
-            <option value="name">Name</option>
-            <option value="class">Class</option>
+      <div class="panel-grid">
+        <label>
+          Orbit class
+          <select id="classSelect">
+            <option value="all">All classes</option>
+            <option value="IEO">Atira</option>
+            <option value="ATE">Aten</option>
+            <option value="APO">Apollo</option>
+            <option value="AMO">Amor</option>
+            <option value="COM">Comets</option>
           </select>
-        </div>
+        </label>
 
-        <p class="hint">Drag to rotate, scroll to zoom, click any object to inspect it.</p>
-      </aside>
-
-      <aside class="object-panel" aria-label="Object list and selection">
-        <div class="selected-card">
-          <p class="eyebrow">Selected object</p>
-          <h2 id="selectedName">None selected</h2>
-          <dl id="selectedDetails">
-            <div>
-              <dt>Diameter</dt>
-              <dd>--</dd>
-            </div>
-            <div>
-              <dt>Class</dt>
-              <dd>--</dd>
-            </div>
-            <div>
-              <dt>MOID</dt>
-              <dd>--</dd>
-            </div>
-            <div>
-              <dt>Current range</dt>
-              <dd>--</dd>
-            </div>
-          </dl>
-        </div>
-        <div class="list-header">
-          <span id="listCount">-- objects</span>
-          <span id="sourceDate">--</span>
-        </div>
-        <div id="objectList" class="object-list" role="list"></div>
-      </aside>
-
-      <div class="legend" aria-label="Object class legend">
-        <span><i class="swatch atira"></i>Atira</span>
-        <span><i class="swatch aten"></i>Aten</span>
-        <span><i class="swatch apollo"></i>Apollo</span>
-        <span><i class="swatch amor"></i>Amor</span>
-        <span><i class="swatch comet"></i>Comet</span>
+        <label>
+          Object type
+          <select id="kindSelect">
+            <option value="all">All NEOs</option>
+            <option value="asteroid">Asteroids</option>
+            <option value="comet">Comets</option>
+          </select>
+        </label>
       </div>
 
-      <div id="loading" class="loading" role="status">
-        Loading NASA/JPL orbit snapshot...
+      <div class="panel-section inline-options">
+        <label>
+          <input id="displayAll" type="checkbox">
+          Display all &gt;0.5 km NEOs
+        </label>
+        <label>
+          <input id="labelsToggle" type="checkbox">
+          Labels
+        </label>
       </div>
-    </main>
 
-    <script type="module" src="src/main.js"></script>
-  </body>
+      <div class="panel-section">
+        <label for="searchInput">Find object</label>
+        <input id="searchInput" type="search" placeholder="Apophis, Bennu, 433...">
+      </div>
+
+      <div class="panel-section">
+        <label for="sortSelect">Sort list</label>
+        <select id="sortSelect">
+          <option value="diameter">Largest first</option>
+          <option value="moid">Smallest MOID</option>
+          <option value="name">Name</option>
+          <option value="class">Class</option>
+        </select>
+      </div>
+
+      <p class="hint">Drag to rotate, scroll to zoom, click any object to inspect it.</p>
+    </aside>
+
+    <aside class="object-panel" aria-label="Object list and selection">
+      <div class="selected-card">
+        <p class="eyebrow">Selected object</p>
+        <h2 id="selectedName">None selected</h2>
+        <dl id="selectedDetails">
+          <div>
+            <dt>Diameter</dt>
+            <dd>--</dd>
+          </div>
+          <div>
+            <dt>Class</dt>
+            <dd>--</dd>
+          </div>
+          <div>
+            <dt>MOID</dt>
+            <dd>--</dd>
+          </div>
+          <div>
+            <dt>Current range</dt>
+            <dd>--</dd>
+          </div>
+        </dl>
+      </div>
+      <div class="list-header">
+        <span id="listCount">-- objects</span>
+        <span id="sourceDate">--</span>
+      </div>
+      <div id="objectList" class="object-list" role="list"></div>
+    </aside>
+
+    <div class="legend" aria-label="Object class legend">
+      <span><i class="swatch atira"></i>Atira</span>
+      <span><i class="swatch aten"></i>Aten</span>
+      <span><i class="swatch apollo"></i>Apollo</span>
+      <span><i class="swatch amor"></i>Amor</span>
+      <span><i class="swatch comet"></i>Comet</span>
+    </div>
+
+    <div id="loading" class="loading" role="status">
+      Loading NASA/JPL orbit snapshot...
+    </div>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+
 </html>
