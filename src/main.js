@@ -19,6 +19,10 @@ const CLASS_COLORS = {
   COM: "#f6f7eb",
   AST: "#b8f28b"
 };
+const TRAIL_DAYS = 90;
+const TRAIL_STEPS = 12;
+const SELECTED_TRAIL_DAYS = 180;
+const SELECTED_TRAIL_STEPS = 24;
 
 const elements = {
   canvas: document.querySelector("#orbitCanvas"),
@@ -153,17 +157,6 @@ function positionFromElements(object, jd = state.jd) {
   return rotateEcliptic(xOrbital, yOrbital, object);
 }
 
-function sampleOrbit(object, steps = 144) {
-  const samples = [];
-  for (let index = 0; index <= steps; index += 1) {
-    const eccentricAnomaly = (index / steps) * Math.PI * 2;
-    const xOrbital = object.a * (Math.cos(eccentricAnomaly) - object.e);
-    const yOrbital = object.a * Math.sqrt(1 - object.e * object.e) * Math.sin(eccentricAnomaly);
-    samples.push(rotateEcliptic(xOrbital, yOrbital, object));
-  }
-  return samples;
-}
-
 function earthPosition(jd) {
   const T = (jd - J2000) / 36525;
   const a = 1.00000261 + 0.00000562 * T;
@@ -197,6 +190,15 @@ function distance(a, b = { x: 0, y: 0, z: 0 }) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+function geocentricPosition(object, jd, earth = earthPosition(jd)) {
+  const heliocentric = positionFromElements(object, jd);
+  return {
+    x: heliocentric.x - earth.x,
+    y: heliocentric.y - earth.y,
+    z: heliocentric.z - earth.z
+  };
+}
+
 function project(point) {
   const cy = Math.cos(state.yaw);
   const sy = Math.sin(state.yaw);
@@ -214,6 +216,27 @@ function project(point) {
   };
 }
 
+function isOnCanvas(screen, margin = 40) {
+  return (
+    screen.x >= -margin &&
+    screen.x <= state.width + margin &&
+    screen.y >= -margin &&
+    screen.y <= state.height + margin
+  );
+}
+
+function renderStateForObject(object, earth) {
+  const geocentric = geocentricPosition(object, state.jd, earth);
+  const screen = project(geocentric);
+  return {
+    object,
+    geocentric,
+    screen,
+    rangeAu: distance(geocentric),
+    visible: isOnCanvas(screen)
+  };
+}
+
 function objectClass(object) {
   if (object.is_comet) return "COM";
   return object.class || "AST";
@@ -221,6 +244,16 @@ function objectClass(object) {
 
 function objectColor(object) {
   return CLASS_COLORS[objectClass(object)] || CLASS_COLORS.AST;
+}
+
+function rgbaColor(hex, alpha) {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return hex;
+  const value = Number.parseInt(normalized, 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
 }
 
 function objectType(object) {
@@ -320,53 +353,45 @@ function drawSunAndEarth(earth) {
   ctx.fillText("Sun", sun.x + sunRadius + 7, sun.y + 4);
 }
 
-function drawOrbit(object, earth, isSelected) {
-  const samples = object.orbitSamples;
-  if (!samples || samples.length < 2) return;
+function drawTrail(object, isSelected) {
+  const steps = isSelected ? SELECTED_TRAIL_STEPS : TRAIL_STEPS;
+  const trailDays = isSelected ? SELECTED_TRAIL_DAYS : TRAIL_DAYS;
+  const color = objectColor(object);
+  let previous = null;
 
-  ctx.beginPath();
-  for (let index = 0; index < samples.length; index += 1) {
-    const sample = samples[index];
-    const point = project({
-      x: sample.x - earth.x,
-      y: sample.y - earth.y,
-      z: sample.z - earth.z
-    });
-    if (index === 0) {
-      ctx.moveTo(point.x, point.y);
-    } else {
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  for (let index = 0; index <= steps; index += 1) {
+    const progress = index / steps;
+    const jd = state.jd - trailDays * (1 - progress);
+    const point = project(geocentricPosition(object, jd));
+
+    if (previous) {
+      const alpha = isSelected ? 0.14 + progress * 0.54 : 0.02 + progress * 0.11;
+      ctx.strokeStyle = rgbaColor(color, alpha);
+      ctx.lineWidth = isSelected ? 1.3 + progress * 1.4 : 0.45 + progress * 0.45;
+      ctx.beginPath();
+      ctx.moveTo(previous.x, previous.y);
       ctx.lineTo(point.x, point.y);
+      ctx.stroke();
     }
+
+    previous = point;
   }
 
-  const color = objectColor(object);
-  ctx.strokeStyle = isSelected ? color : `${color}30`;
-  ctx.lineWidth = isSelected ? 2.1 : 0.75;
-  ctx.stroke();
+  ctx.restore();
 }
 
-function drawObject(object, earth, isSelected) {
-  const heliocentric = positionFromElements(object, state.jd);
-  const geocentric = {
-    x: heliocentric.x - earth.x,
-    y: heliocentric.y - earth.y,
-    z: heliocentric.z - earth.z
-  };
-  const screen = project(geocentric);
-  const rangeAu = distance(geocentric);
+function drawObject(renderable, isSelected) {
+  if (!renderable.visible) return null;
+
+  const { object, screen, rangeAu } = renderable;
   const diameter = object.diameter_km ?? 1;
   const radius = isSelected
     ? clamp(5 + Math.log10(diameter + 1) * 4, 6, 13)
     : clamp(2 + Math.log10(diameter + 1) * 2.1, 2.4, 7);
-
-  if (
-    screen.x < -40 ||
-    screen.x > state.width + 40 ||
-    screen.y < -40 ||
-    screen.y > state.height + 40
-  ) {
-    return null;
-  }
 
   const color = objectColor(object);
   ctx.globalAlpha = isSelected ? 1 : clamp(0.36 + 0.22 / Math.max(rangeAu, 0.3), 0.36, 0.78);
@@ -398,20 +423,20 @@ function drawScene() {
   drawGrid();
   const earth = earthPosition(state.jd);
   state.projected = [];
+  const renderables = state.filtered.map((object) => renderStateForObject(object, earth));
+  const selected = renderables.find(({ object }) => object.spkid === state.selectedId);
 
-  for (const object of state.filtered) {
-    drawOrbit(object, earth, object.spkid === state.selectedId);
+  for (const renderable of renderables) {
+    if (renderable.object.spkid !== state.selectedId && renderable.visible) {
+      drawTrail(renderable.object, false);
+    }
   }
+  if (selected) drawTrail(selected.object, true);
 
-  const sortedForDepth = [...state.filtered].sort((a, b) => {
-    const ap = positionFromElements(a, state.jd);
-    const bp = positionFromElements(b, state.jd);
-    return project({ x: ap.x - earth.x, y: ap.y - earth.y, z: ap.z - earth.z }).z -
-      project({ x: bp.x - earth.x, y: bp.y - earth.y, z: bp.z - earth.z }).z;
-  });
+  const sortedForDepth = [...renderables].sort((a, b) => a.screen.z - b.screen.z);
 
-  for (const object of sortedForDepth) {
-    const projected = drawObject(object, earth, object.spkid === state.selectedId);
+  for (const renderable of sortedForDepth) {
+    const projected = drawObject(renderable, renderable.object.spkid === state.selectedId);
     if (projected) state.projected.push(projected);
   }
 
@@ -530,12 +555,7 @@ function updateSelectedDetails() {
   }
 
   const earth = earthPosition(state.jd);
-  const position = positionFromElements(object, state.jd);
-  const rangeAu = distance({
-    x: position.x - earth.x,
-    y: position.y - earth.y,
-    z: position.z - earth.z
-  });
+  const rangeAu = distance(geocentricPosition(object, state.jd, earth));
 
   elements.selectedName.textContent = object.display_name;
   elements.selectedDetails.innerHTML = detailMarkup({
@@ -710,10 +730,7 @@ async function loadData() {
   }
   const data = await response.json();
   state.data = data;
-  state.objects = data.objects.map((object) => ({
-    ...object,
-    orbitSamples: sampleOrbit(object)
-  }));
+  state.objects = data.objects;
   state.selectedId = state.objects[0]?.spkid ?? null;
   elements.sourceDate.textContent = `data ${new Date(data.generated_at).toISOString().slice(0, 10)}`;
   applyFilters();
